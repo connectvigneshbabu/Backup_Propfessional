@@ -1,0 +1,255 @@
+esx commands
+vmware -vl -- for version of the esxi
+patch installation command
+esxcli software vib install --depot=/vmfs/volumes/4
+
+power state commands : in VM level 
+vim-cmd vmsvc/getallvms
+vim-cmd vmsvc/power.getstate
+vim-cmd vmsvc/power.shutdown <VM-ID>
+vim-cmd vmsvc/power.on <VM-ID>
+
+vobd.log for storage latency check 
+
+a45d365b046d
+
+01hw585198
+
+commands to identify the VM to kill and start 
+esxcli vm process list   # this will who the process list and world-id of all the VM,s running in that host 
+esxcli vm process kill --type=soft --world-id=<world ID>
+
+commands to readd the machine to inventory and turnon
+vim-cmd solo/registervm <path of the VMX location>
+
+scsi code decryption
+http://www.virten.net/vmware/esxi-scsi-sense-code-decoder/?host=5&device=0&plugin=0&sensekey=0&asc=0&ascq=0
+
+7429
+
+version and firmware of the HBA
+ethtool -i vmnic0
+For HBA   ---  #/usr/lib/vmware/vmkmgmt_keyval/vmkmgmt_keyval -a |less
+For NIC  --- #esxcli network nic get -n vmnic0
+
+for changing storasge to Multipath on Hitachi Storage connected ESXi server
+esxcli storage nmp satp set --default-psp=VMW_PSP_RR --satp VMW_SATP_DEFAULT_AA
+
+
+for not scanning the RDMs
+esxcli storage core device setconfig -d naa.60060e801332800050203280000010ae --perennially-reserved=true 
+
+
+To view Storage UUID
+esxcli storage vmfs extent list  
+
+
+find the delta disk(snapshot disk)
+find /vmfs/volumes/ -iname "*delta.vmdk"
+
+for reclaiming storage from Vmware perspective 
+esxcli storage vmfs unmap --volume-label=<datastore name>
+
+esxcli storage vmfs unmap --volume-label=CDCTXIOStore03_OS
+esxcli storage vmfs unmap --volume-label=CDCTXIOStore04_OS
+
+vm-support -w /vmfs/volumes/Ux_NMCA_WIN_HITACHI15/
+
+Changing thick disk to thin disk.
+vmkfstools -i "/vmfs/volumes/<source datastore>/<vm-folder>/Unbutu-8.04.4.vmdk" "/vmfs/volumes/<destination datastore>/<dest-folder>/Unbutu-8.04.4.vmdk" -d thin -a lsilogic
+
+
+HP commands
+add server-port-map <profilename:portID> <name of the enet> VLanID=<vlan ID number>
+
+add server-port-map <servername:<portid>> <Vlan name> VLanID=<vlan number> 
+
+add network <NetworkName> [UplinkSet=<UplinkSetName> VLanID=<VLanID>] [State=<Enabled|Disabled>] [SmartLink=<Enabled|Disabled>] 
+
+set network <NetworkName> [Name=<NewName>] [State=<Enabled|Disabled>] [SmartLink=<Enabled|Disabled>] 
+
+HP VC CLI Commands 
+add server-port-map <servername:<portid>> <Vlan name> VLanID=<vlan number>
+
+power cli commands 
+remove the snapshots 
+Get-VM -Name VM_CDCUGTMSAPP1_169.81 | Get-Snapshot | Remove-Snapshot -Confirm (for one VM)
+
+move machine to the folder 
+Move-VM -VM VM_RHEL5_TEMPLATE_64Bit_APPDB_3.49 -Destination TEMPLATE
+
+Delete snapshots over the night shifts
+ $snapshots = get-content "Z:\prodsnapshotlist.txt" 
+ foreach ( $i in $snapshots )
+ {
+ Get-Snapshot $i | Remove-Snapshot -confirm:$false
+ }
+ 
+ 
+ 
+Get-VMHost $Hosts | Get-ScsiLun | Get-ScsiLunPath | Select @{N="Parent";E={(Get-View -Id ($_.ScsiLunId.Split('/')[0])).Name}},Name,SCsiLunId,SanId
+Get-VMHost 192.168.107.127 | Get-ScsiLun | Get-ScsiLunPath | Select @{N="Parent";E={(Get-View -Id ($_.ScsiLunId.Split('/')[0])).Name}},Name,SCsiLunId,SanId
+
+
+
+$esxi = get-content "Z:\scsipath.txt"
+foreach ($i in $esxi)
+{
+Get-ScsiLun -VmHost  $i -CanonicalName "naa.6006*" | %{
+  $path = Get-ScsiLunPath -ScsiLun $_ | Get-Random
+  Set-ScsiLun -ScsiLun $_ -MultipathPolicy "Fixed" -PreferredPath $path }}
+  
+vc-support
+Get-Log -Bundle -DestinationPath c:\Storage\Location\
+
+vm-support
+Get-VMHost 192.168.115.118 | Get-Log -Bundle -DestinationPath C:\Vmsupportlogs\
+
+
+Get-ScsiLun -VmHost  cdcudhost45.ultimatixuat.net -LunType disk | %{
+  $path = Get-ScsiLunPath -ScsiLun $_ | Get-Random
+  Set-ScsiLun -ScsiLun $_ -MultipathPolicy "Fixed" -PreferredPath $path
+}
+
+
+
+
+$server = get-content "C:\Multipathserverprod.txt"
+foreach ($i in $server)
+{
+Get-ScsiLun -VmHost  $i -CanonicalName "naa.6006*" | where {$_.MultipathPolicy -ne "RoundRobin"} | Set-ScsiLun -MultipathPolicy RoundRobin
+}
+
+
+
+ Set-ExecutionPolicy -Scope currentuser -ExecutionPolicy unrestricted
+Powershell commands
+Get-ExecutionPolicy -List
+PowerShell.exe -ExecutionPolicy AllSigned RemoteSigned
+execution policies 
+--------------------------------
+Restricted
+AllSigned
+RemoteSigned
+Unrestricted
+Bypass
+--------------------------------------
+
+Move-VM -VM VM -Destination Folder
+
+for replacing the group of file name in the folder 
+Dir | Rename-Item –NewName { $_.name –replace “ “,”_” }
+
+for extracting the eventlogs
+Get-EventLog -LogName Security -ErrorAction SilentlyContinue | Export-Csv output.csv
+
+
+for power cli
+Get-VM | Get-HardDisk -DiskType "RawPhysical","RawVirtual" | Select Parent,Name,DiskType,ScsiCanonicalName,DeviceName | fl | Out-File –FilePath c:\pass\RDM-list.txt
+
+for files and folder listing inside the directory 
+Get-ChildItem <Directory>  -Recurse | where {$_.PsIsContainer}
+
+get the list of local accounts in the computer.
+$hosname = $env:COMPUTERNAME
+Get-WmiObject -Class Win32_UserAccount -Namespace "root\cimv2" -Filter "LocalAccount='$True'" | Export-Csv "$hosname.csv"
+
+for Execution level rights
+Set-PSSessionConfiguration Microsoft.Powershell -ShowSecurityDescriptorUI 
+
+for log analysis
+Get-Content “.\*log” | ? { ($_ | Select-String “/ews”)}  
+
+
+Reset the IE Settings through the Command Line: 
+rundll32 inetcpl.cpl ResetIEtoDefaults
+
+to clean up services packs in temp in windows 
+dism.exe /online /cleanup-image /spsuperseded
+
+for Compress the dir
+compact /C /S:"C:\Research In Motion\" /I /F
+
+to rename the list of file in the folder 
+ren ".<extn>" ".<extn>"
+
+windows activation 
+c:windows\system32
+past following command one by one
+cscript SLMGR.vbs -skms 172.17.9.198:1688 , 172.17.9.198/172.17.24.187
+cscript SLMGR.vbs -ato
+
+WMIC commands 
+wmic bios get serialnumber
+wmic computersystem get manufacturer
+wmic computersystem get model
+
+qwinsta - query active session
+rwinsta- remove the session 
+
+$timeoffset = &w32tm /stripchart /dataonly /computer:172.17.117.242 /samples:1; $timeoffset[3].split(' ')[1].TrimEnd('s') 
++2 to -2 
+
+For the memory dump creation
+https://support.microsoft.com/en-us/kb/969028
+
+Registry Changes
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W32Time\Config > AnnounceFlags = 5
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpServer >> Enabled = 0
+
+Commands to be run on the client to sync time
+w32tm /config /syncfromflags:manual /manualpeerlist: 10.102.115.15
+w32tm /config /update
+w32tm /resync
+Timer Debug commands:
+w32tm /debug /enable /file:%userprofile%\desktop\time.txt /size:4000000 /entries:0-300
+perfmon command:
+Logman.exe create counter PerfLog-Long -o "c:\perflogs\PerfLog-Long.blg" -f bincirc -v mmddhhmm -max 250 -c "\Cache\*" "\LogicalDisk(*)\*" "\Memory\*" "\Network Interface(*)\*" "\Paging File(*)\*" "\PhysicalDisk(*)\*" "\Processor(*)\*" "\Process(*)\*" "\Redirector\*" "\Server\*" "\Server Work Queues\*" "\System\*"  -si 00:05:00 
+
+4:57:11 AM: tool to analyse: PAL tool 
+
+Eventlog Enabling command
+wevtutil sl Security /rt:true /ab:true /ms:524288
+
+/ms:524288
+
+4656 - folder delete logs event ID
+
+windows unquoted path enumeration 
+wmic service get name,displayname,pathname,startmode |findstr /i "auto" |findstr /i /v "c:\windows\\" |findstr /i /v """
+
+
+https://www.pranavchan.com/A126_Myctiv040ities5/$_@ge_id_@@@23_25$98945_1258/25$656?param=2
+
+site reports 
+http://cdctcm12casdb.india.tcs.com/Reports/Pages/Folder.aspx?ItemPath=%2fConfigMgr_CAS&ViewMode=List
+
+
+----------------------------------------------------------------------------------
+Identifying the windows system file mismatches in hashing and drivers corruptions 
+______________________________________
+Run Sfc/scannow
+
+from the CBS.log identify the error packages 
+findstr /c:"[SR]" %windir%\Logs\CBS\CBS.log >"%userprofile%\Desktop\sfcdetails.txt"
+
+dism /online /cleanup-image /scanhealth
+Dism /Online /Cleanup-Image /RestoreHealth /source:C:\sources\sxs
+
+-------------------------------------------------------------------
+for clearing local saved passwords
+rundll32.exe keymgr.dll,KRShowKeyMgr
+-------------------------------------------------------------------
+
+Flag clearance for patch or reboots key location: 
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion??\Component Based Servicing\RebootPending
+
+
+
+dsquery * -Filter "(&(objectCategory=person)(objectClass=user)(memberOf=CN=asdjasdasd,OU=Groups,OU=Thane Data Centre,OU= Mumbai,OU=TCS - India,OU=TCSL,DC=dasdasd,DC=net))" -attr sAMAccountName -limit 0 
+
+
+script for registry changes : 
+@echo on
+for /f %%a in ('type machines.txt') do reg.exe add "\\%%a\HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverride /t REG_DWORD /d 0 /f
+for /f %%a in ('type machines.txt') do reg.exe add "\\%%a\HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" /v FeatureSettingsOverrideMask /t REG_DWORD /d 3 /f
